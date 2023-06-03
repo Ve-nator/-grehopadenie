@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navier-Stokes Equations</title>
+    <style>
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border: 1px solid #000;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        var canvas = document.getElementById('canvas');
+        var ctx = canvas.getContext('2d');
+
+        // Размеры сетки
+        var gridSizeX = 100;
+        var gridSizeY = 100;
+
+        // Размеры области
+        var width = 2.0;
+        var height = 2.0;
+
+        // Шаги сетки
+        var dx =  width / 2*gridSizeX;
+        var dy =  height / 2*gridSizeY;
+
+        // Вязкость жидкости
+        var viscosity = 0.1;
+
+        // Шаг по времени
+        var dt = 1 ;
+
+        // Инициализация полей скорости и давления
+        var u = [];
+        var v = [];
+        var p = [];
+
+        for (var i = 0; i < gridSizeX + 1; i++) {
+            u[i] = [];
+            v[i] = [];
+            p[i] = [];
+
+            for (var j = 0; j < gridSizeY + 1; j++) {
+                u[i][j] = 0;
+                v[i][j] = 0;
+                p[i][j] = 0.5;
+				
+				
+
+            }
+			
+		      u[0][gridSizeY/2] = 5;
+               u[0][gridSizeY/2+1] = 5;
+				 
+        }
+
+        // Функция для рассчета одного шага по времени
+        function step() {
+            // Рассчет скорости
+            for (var i = 1; i < gridSizeX; i++) {
+                for (var j = 1; j < gridSizeY; j++) {
+                    var du_dx = (u[i + 1][j] - u[i - 1][j]) / (2 * dx);
+                    var du_dy = (u[i][j + 1] - u[i][j - 1]) / (2 * dy);
+                    var dv_dx = (v[i + 1][j] - v[i - 1][j]) / (2 * dx);
+                    var dv_dy = (v[i][j + 1] - v[i][j - 1]) / (2 * dy);
+
+                    var laplacian_u = (u[i + 1][j] - 2 * u[i][j] + u[i - 1][j]) / (dx * dx) + (u[i][j + 1] - 2 * u[i][j] + u[i][j - 1]) / (dy * dy);
+                    var laplacian_v = (v[i + 1][j] - 2 * v[i][j] + v[i - 1][j]) / (dx * dx) + (v[i][j + 1] - 2 * v[i][j] + v[i][j - 1]) / (dy * dy);
+
+                                        var advection_u = u[i][j] * du_dx + v[i][j] * du_dy;
+                    var advection_v = u[i][j] * dv_dx + v[i][j] * dv_dy;
+
+                    var pressure_gradient_x = (p[i + 1][j] - p[i - 1][j]) / (2 * dx);
+                    var pressure_gradient_y = (p[i][j + 1] - p[i][j - 1]) / (2 * dy);
+
+                    var diffusion_u = viscosity * laplacian_u;
+                    var diffusion_v = viscosity * laplacian_v;
+
+                    // Рассчет новой скорости
+                    u[i][j] += dt * (-advection_u + diffusion_u - pressure_gradient_x);
+                    v[i][j] += dt * (-advection_v + diffusion_v - pressure_gradient_y);
+                }
+            }
+
+            // Рассчет давления
+       
+                for (var i = 1; i < gridSizeX; i++) {
+                    for (var j = 1; j < gridSizeY; j++) {
+                        var divergence = (u[i + 1][j] - u[i - 1][j]) / (2 * dx) + (v[i][j + 1] - v[i][j - 1]) / (2 * dy);
+                        p[i][j] = (p[i + 1][j] + p[i - 1][j] + p[i][j + 1] + p[i][j - 1] - dx * dx * divergence) / 4;
+                    }
+                }
+            
+        }
+
+        // Инициализация
+        function setup() {
+            canvas.width = gridSizeX * 10;
+            canvas.height = gridSizeY * 10;
+            ctx.strokeStyle = '#000';
+            ctx.fillStyle = 'rgba(0, 100, 200, 0.5)';
+
+            requestAnimationFrame(draw);
+        }
+
+        // Отрисовка полей скорости и давления
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          
+  // Отрисовка полей скорости
+            for (var i = 0; i < gridSizeX; i++) {
+                for (var j = 0; j < gridSizeY; j++) {
+                    var x = i * 10;
+                    var y = j * 10;
+                    var speedX = u[i][j];
+                    var speedY = v[i][j];
+
+                    // Calculate the position of the arrow tail
+                    var arrowTailX = x + (speedX * 5);
+                    var arrowTailY = y + (speedY * 5);
+
+                    // Draw the velocity vector arrow
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(arrowTailX, arrowTailY);
+                    ctx.strokeStyle = 'black';
+                    ctx.stroke();
+
+                    // Draw the arrowhead
+                    ctx.beginPath();
+                    var angle = Math.atan2(speedY, speedX);
+                    ctx.moveTo(arrowTailX, arrowTailY);
+                    ctx.lineTo(
+                        arrowTailX - 5 * Math.cos(angle - Math.PI / 6),
+                        arrowTailY - 5 * Math.sin(angle - Math.PI / 6)
+                    );
+                    ctx.moveTo(arrowTailX, arrowTailY);
+                    ctx.lineTo(
+                        arrowTailX - 5 * Math.cos(angle + Math.PI / 6),
+                        arrowTailY - 5 * Math.sin(angle + Math.PI / 6)
+                    );
+                    ctx.strokeStyle = 'black';
+                    ctx.stroke();
+                }
+            }
+			
+			
+			// Отрисовка полей давления
+            for (var i = 0; i < gridSizeX; i++) {
+                for (var j = 0; j < gridSizeY; j++) {
+                    var x = i * 10;
+                    var y = j * 10;
+                    var pressure = p[i][j];
+
+                    ctx.beginPath();
+                    ctx.arc(x, y, Math.abs(pressure) * 10, 0, 2 * Math.PI);
+                    ctx.fillStyle = 'rgba(0, 100, 200, 0.5)';
+                    ctx.fill();
+                }
+            }
+			
+			
+			
+            // Выполнение одного шага по времени
+            step();
+
+            requestAnimationFrame(draw);
+        }
+
+        // Запуск симуляции
+        setup();
+    </script>
+</body>
+</html>
